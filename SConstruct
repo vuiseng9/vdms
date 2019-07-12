@@ -38,6 +38,7 @@ def buildServer(env):
              'avcodec',
              'avformat',
              'avutil',
+             'swscale'
            ],
 
     LIBPATH = ['utils/',
