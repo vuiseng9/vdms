@@ -34,7 +34,7 @@
 #include <iostream>
 #include <vector>
 
-#include "vcl/KeyFrameParser.h"
+#include "vcl/KeyFrame.h"
 
 extern "C"
 {
