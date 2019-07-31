@@ -101,6 +101,7 @@ Video& Video::operator=(Video vid)
 Video::~Video()
 {
     _operations.clear();
+    _key_frame_decoder.reset();
 }
 
     /*  *********************** */
@@ -119,11 +120,57 @@ Video::Codec Video::get_codec() const
 
 cv::Mat Video::get_frame(unsigned frame_number)
 {
-    perform_operations();
-    if (frame_number >= _size.frame_count)
-        throw VCLException(OutOfBounds, "Frame requested is out of bounds");
+    cv::Mat frame;
 
-    return _frames.at(frame_number).get_cvmat();
+    if (_key_frame_decoder == nullptr) {
+        perform_operations();
+        if (frame_number >= _size.frame_count)
+            throw VCLException(OutOfBounds, "Frame requested is out of bounds");
+
+        frame =  _frames.at(frame_number).get_cvmat();
+    }
+    else {
+        _key_frame_decoder->clear();
+
+        std::vector<unsigned> frame_list = {frame_number};
+        EncodedFrameList list = _key_frame_decoder->decode(frame_list);
+
+        auto& f = list[0];
+        VCL::Image tmp((void*)&f[0], f.length());
+        frame = tmp.get_cvmat();
+    }
+
+    return frame;
+}
+
+std::vector<cv::Mat> Video::get_frames(std::vector<unsigned> frame_list)
+{
+    std::vector<cv::Mat> image_list;
+
+    if (_key_frame_decoder == nullptr) {
+        // Key frame information is not available: video will be decoded using
+        // OpenCV.
+        for (const auto& f : frame_list)
+            image_list.push_back(get_frame(f));
+    }
+    else {
+        // Key frame information is set, video will be partially decoded using
+        // _key_frame_decoder object.
+
+        // We perform a cleanup on key-frame decoder's internal structures, in
+        // order to avoid processing frames decoded in a previous call to this
+        // method.
+        _key_frame_decoder->clear();
+
+        EncodedFrameList list = _key_frame_decoder->decode(frame_list);
+
+        for (const auto& f : list) {
+            VCL::Image tmp((void*)&f[0], f.length());
+            image_list.push_back(tmp.get_cvmat());
+        }
+    }
+
+    return image_list;
 }
 
 long Video::get_frame_count()
@@ -196,6 +243,14 @@ void Video::set_dimensions(const cv::Size& dimensions)
 {
     _size.height = dimensions.height;
     _size.width  = dimensions.width;
+}
+
+void Video::set_key_frame_list(KeyFrameList &key_frames)
+{
+    _key_frame_decoder =
+      std::unique_ptr<KeyFrameDecoder>(new VCL::KeyFrameDecoder(_video_id));
+
+    _key_frame_decoder->set_key_frames(key_frames);
 }
 
     /*  *********************** */
