@@ -693,3 +693,68 @@ TEST_F(VideoTest, KeyFrameExtractionFailure)
         ASSERT_TRUE(key_frame_list.empty());
     }
 }
+
+TEST_F(VideoTest, KeyFrameDecodingSuccess)
+{
+    try {
+        VCL::VideoTest video_data(_video_path_mp4_h264);
+
+        VCL::KeyFrameList key_frame_list;
+        key_frame_list.push_back({.idx = 155, .base = 495756});
+        key_frame_list.push_back({.idx = 0, .base = 564});
+        key_frame_list.push_back({.idx = 201, .base = 648600});
+        key_frame_list.push_back({.idx = 99, .base = 319224});
+
+        video_data.set_key_frame_list(key_frame_list);
+
+        std:vector<unsigned> frame_query = {15, 30, 110, 150};
+        int first_query_len = frame_query.size();
+
+        std::vector<cv::Mat> mat_list = video_data.get_frames(frame_query);
+        ASSERT_TRUE(mat_list.size() == frame_query.size());
+
+        frame_query.clear();
+
+        frame_query = {100, 120, 130};
+        int second_query_len = frame_query.size();
+        for (auto& m : video_data.get_frames(frame_query))
+            mat_list.push_back(m);
+        ASSERT_TRUE(mat_list.size() == (first_query_len + second_query_len));
+
+        for (int i = 0; i < mat_list.size(); ++i) {
+            std::string filename = "videos_tests/kf_frame_" + std::to_string(i);
+
+            VCL::Image img(mat_list[i], false);
+            img.store(filename, VCL::Image::Format::PNG, false);
+        }
+
+    } catch (VCL::Exception e) {
+        print_exception(e);
+        ASSERT_TRUE(false);
+    }
+}
+
+TEST_F(VideoTest, CheckDecodedFrames)
+{
+    const unsigned frame_idx = 50;
+
+    cv::Mat decoded_with_keyframe;
+    {
+        VCL::KeyFrameList key_frame_list;
+        key_frame_list.push_back({.idx = 0, .base = 564});
+        key_frame_list.push_back({.idx = 99, .base = 319224});
+
+        VCL::VideoTest video_data(_video_path_mp4_h264);
+        video_data.set_key_frame_list(key_frame_list);
+
+        decoded_with_keyframe = video_data.get_frame(frame_idx);
+    }
+
+    cv::Mat decoded_with_opencv;
+    {
+        VCL::VideoTest video_data(_video_path_mp4_h264);
+        decoded_with_opencv = video_data.get_frame(frame_idx);
+    }
+
+    compare_mat_mat(decoded_with_keyframe, decoded_with_opencv);
+}
