@@ -137,21 +137,18 @@ int AddVideo::construct_protobuf(
 
     const std::string from_server_file = get_value<std::string>(cmd,
                                                         "from_server_file", "");
-    VCL::Video video;
+
+    VCL::Video video; // Video obj for input video
+
     if (from_server_file.empty())
+    {
+        // blob attacted to query is written to /tmp input video path
         video = VCL::Video((void*)blob.data(), blob.size());
+    }
     else
+    {
         video = VCL::Video(from_server_file);
-
-
-    // Key frame extraction works on binary stream data, without encoding. We
-    // check whether key-frame extraction is to be applied, and if so, we
-    // extract the frames before any other operations are applied. Applying
-    // key-frame extraction after applying pending operations will be
-    // non-optimal: the video will be decoded while performing the operations.
-    VCL::KeyFrameList frame_list;
-    if (get_value<bool>(cmd, "index_frames", false))
-        frame_list = video.get_key_frame_list();
+    }
 
     if (cmd.isMember("operations")) {
         enqueue_operations(video, cmd["operations"]);
@@ -179,17 +176,27 @@ int AddVideo::construct_protobuf(
 
     video.store(file_name, vcl_codec);
 
-    // Add key-frames (if extracted) as nodes connected to the video
-    for (const auto &frame : frame_list) {
-        Json::Value frame_props;
-        frame_props[VDMS_KF_IDX_PROP]  = static_cast<Json::UInt64>(frame.idx);
-        frame_props[VDMS_KF_BASE_PROP] = static_cast<Json::Int64> (frame.base);
+    // For now, keyframe extraction is only enabled for video with AVC encoding.
+    // It is important to place this routine to ensure
+    // final stored (could be transcoded) video is extracted.
+    if ((VCL::Video::AVC1 == vcl_codec) || (VCL::Video::H264 == vcl_codec))
+    {
+        VCL::KeyFrameList frame_list;
+        VCL::Video stored_video = VCL::Video(file_name);
+        frame_list = stored_video.get_key_frame_list();
 
-        int frame_ref = query.get_available_reference();
-        query.AddNode(frame_ref, VDMS_KF_TAG, frame_props,
-                      Json::Value());
-        query.AddEdge(-1, node_ref, frame_ref, VDMS_KF_EDGE,
-                      Json::Value());
+        // Add key-frames (if extracted) as nodes connected to the video
+        for (const auto &frame : frame_list) {
+            Json::Value frame_props;
+            frame_props[VDMS_KF_IDX_PROP]  = static_cast<Json::UInt64>(frame.idx);
+            frame_props[VDMS_KF_BASE_PROP] = static_cast<Json::Int64> (frame.base);
+
+            int frame_ref = query.get_available_reference();
+            query.AddNode(frame_ref, VDMS_KF_TAG, frame_props,
+                          Json::Value());
+            query.AddEdge(-1, node_ref, frame_ref, VDMS_KF_EDGE,
+                          Json::Value());
+        }
     }
 
     // In case we need to cleanup the query
