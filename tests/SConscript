@@ -5,7 +5,7 @@ import os
 testenv = env.Clone()
 
 testenv.Replace(
-    CPPPATH= ['../src', '../include', '../utils/include', '../src/vcl/',
+    CPPPATH= ['/usr/local/include/opencv4/', '../src', '../include', '../utils/include', '../src/vcl/',
               '/usr/include/jsoncpp/',
               os.path.join(env['INTEL_PATH'], 'pmgd/include'),
               os.path.join(env['INTEL_PATH'], 'pmgd/util'),
@@ -76,4 +76,4 @@ objects_list = [ '../src/QueryHandler.o',
 if GetOption('cflags') and '-DVIDEO_KEYFRAMES' in GetOption('cflags') :
   objects_list.append('../src/vcl/KeyFrameParser.o')
 
-query_tests = testenv.Program( 'unit_test', objects_list)
+query_tests = testenv.Program( 'unit_test.run', objects_list)

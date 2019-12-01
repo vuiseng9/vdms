@@ -23,7 +23,7 @@ AddOption('--video-keyframes', action='append_const', dest='cflags',
 def buildServer(env):
 
   env.Append(
-    CPPPATH= ['src', 'include', 'src/vcl', 'utils/include',
+    CPPPATH= ['/usr/local/include/opencv4/', 'src', 'include', 'src/vcl', 'utils/include',
               '/usr/include/jsoncpp/',
               os.path.join(env['INTEL_PATH'], 'pmgd/include'),
               os.path.join(env['INTEL_PATH'], 'pmgd/util'),
@@ -85,7 +85,7 @@ def buildServer(env):
   if GetOption('cflags') and '-DVIDEO_KEYFRAMES' in GetOption('cflags') :
     vdms_server_files.append('src/vcl/KeyFrameParser.cc')
 
-  env.Program('vdms', vdms_server_files)
+  env.Program('vdms.run', vdms_server_files)
 
 
 # Set INTEL_PATH. First check arguments, then enviroment, then default
