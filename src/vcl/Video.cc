@@ -53,6 +53,7 @@ Video::Video(const std::string& video_id) :
     Video()
 {
     _video_id = video_id;
+    populate_video_params();
 }
 
 Video::Video(void* buffer, long size) :
@@ -69,6 +70,7 @@ Video::Video(void* buffer, long size) :
         throw VCLException(OpenFailed, "Cannot create temporary file");
 
     _video_id = uname;
+    populate_video_params();
 }
 
 Video::Video(const Video &video)
@@ -200,13 +202,52 @@ void Video::set_dimensions(const cv::Size& dimensions)
     _size.width  = dimensions.width;
 }
 
+void Video::populate_video_params()
+{
+    cv::VideoCapture inputVideo(_video_id);
+
+    _fps = static_cast<float>(inputVideo.get(cv::CAP_PROP_FPS));
+    _size.frame_count  = static_cast<int>(
+                                inputVideo.get(cv::CAP_PROP_FRAME_COUNT));
+    _size.width        = static_cast<int>(
+                                inputVideo.get(cv::CAP_PROP_FRAME_WIDTH));
+    _size.height       = static_cast<int>(
+                                inputVideo.get(cv::CAP_PROP_FRAME_HEIGHT));
+
+    // Get Codec Type- Int form
+    int ex = static_cast<int>(inputVideo.get(cv::CAP_PROP_FOURCC));
+    char fourcc[] = {(char)((ex & 0XFF)),
+                     (char)((ex & 0XFF00) >> 8),
+                     (char)((ex & 0XFF0000) >> 16),
+                     (char)((ex & 0XFF000000) >> 24),
+                     0};
+
+    // TODO - Following routine should be part of utilities
+    // Duplicated in Videocommands string_to_codec and READ operation read_codec
+    std::string codec(fourcc);
+    std::transform(codec.begin(), codec.end(), codec.begin(), ::tolower);
+
+    if (codec == "mjpg")
+        _codec = Codec::MJPG;
+    else if (codec == "xvid")
+        _codec = Codec::XVID;
+    else if (codec == "u263")
+        _codec = Codec::H263;
+    else if (codec == "avc1" || codec == "x264")
+        _codec = Codec::H264;
+    else
+        throw VCLException(UnsupportedFormat, codec + " is not supported");
+
+    inputVideo.release();
+}
+
     /*  *********************** */
     /*       UTILITIES          */
     /*  *********************** */
 
 bool Video::is_read(void)
 {
-    return (_size.frame_count > 0);
+    return (_frames.size() > 0);
 }
 
 void Video::perform_operations()
@@ -287,10 +328,15 @@ void Video::threshold(int value)
 
 void Video::store(const std::string &video_id, Video::Codec video_codec)
 {
-    // out_name cannot be assigned to _video_id here as the read operation
-    // may be pending and the input file name is needed for the read.
-    _operations.push_back(std::make_shared<Write>(video_id, video_codec));
-    perform_operations();
+    if ((video_codec == _codec) && (_operations.size() == 0)) {
+        //We copy/move no change in codec and no operation
+        moveto(video_id);
+    } else {
+        // out_name cannot be assigned to _video_id here as the read operation
+        // may be pending and the input file name is needed for the read.
+        _operations.push_back(std::make_shared<Write>(video_id, video_codec));
+        perform_operations();
+    }
 }
 
 void Video::store()
@@ -300,6 +346,21 @@ void Video::store()
                                         "or ID");
     }
     store(_video_id, _codec);
+}
+
+void Video::moveto(const std::string &video_path)
+{
+    if (!_video_id.empty())
+    {
+        std::filebuf infile, outfile;
+        infile.open(_video_id, std::ios::in | std::ios::binary);
+        outfile.open(video_path, std::ios::out | std::ios::binary);
+
+        std::copy(std::istreambuf_iterator<char>(&infile), {},
+                  std::ostreambuf_iterator<char>(&outfile));
+    }
+    else
+        throw VCLException(ObjectEmpty, "video_input path not found");
 }
 
 void Video::delete_video()

@@ -158,8 +158,13 @@ int AddVideo::construct_protobuf(
     // We default to mp4 and h264, if not specified
     const std::string& container =
                             get_value<std::string>(cmd, "container", "mp4");
+    const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
+
     const std::string& file_name =
                             VCL::create_unique(_storage_video, container);
+
+    VCL::Video::Codec vcl_codec = string_to_codec(codec);
+    video.store(file_name, vcl_codec);
 
     // Modifiyng the existing properties that the user gives
     // is a good option to make the AddNode more simple.
@@ -170,11 +175,6 @@ int AddVideo::construct_protobuf(
 
     // Add Video node
     query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
-
-    const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
-    VCL::Video::Codec vcl_codec = string_to_codec(codec);
-
-    video.store(file_name, vcl_codec);
 
     // For now, keyframe extraction is only enabled for video with AVC encoding.
     // It is important to place this routine to ensure

@@ -214,6 +214,11 @@ namespace VCL {
          */
         void set_dimensions(const cv::Size& dimensions);
 
+        /**
+         *  Populate size, fps, and codec of the Video Container
+         */
+        void populate_video_params();
+
     /*  *********************** */
     /*    Video INTERACTIONS    */
     /*  *********************** */
@@ -274,12 +279,28 @@ namespace VCL {
     void store(const std::string &video_id, Codec video_codec);
 
     /**
+     *  Writes the Video to the system at the given location and in
+     *    the given format with only interested frames
+     *
+     *  @param video_id  Full path to where the video should be written
+     *  @param video_codec  Codec in which to write the video
+     *  @param frame_list  index of interested frames
+     */
+    void store(const std::string &video_id, Video::Codec video_codec,
+                      const std::vector<unsigned> &frame_list);
+
+    /**
      *  Stores a Write Operation in the list of operations, performs the
      *  operations that are already in the list, and finally writes the
      *  video to the disk.
      *  This method will used when the video_id and codec are already defined.
      */
     void store();
+
+    /**
+     *  move current _video_id to video_path
+     */
+    void moveto(const std::string &video_path);
 
     /**
      *  Deletes the Video file
@@ -350,10 +371,13 @@ namespace VCL {
          */
         class Read : public Operation {
 
+        private:
             Video::Codec read_codec(char* fourcc);
 
         public:
-
+            Read()
+            {
+            }
             /**
              *  Reads an Video from the file system (based on specified path)
              *
