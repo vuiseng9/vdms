@@ -1,0 +1,56 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.os
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Python
+*.pyc
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+vdms.run
+unit_test.run
+comm_test
+
+# Qtcreator
+*.config
+*.creator
+*.files
+*.includes
+*.creator.user
+
+# Scon artefact
+.sconsign.dblite
+
+# folder
+db
+pmgd
+protobuf
+utils/include/api_schema/
+client/python/vdms/queryMessage_pb2.py
