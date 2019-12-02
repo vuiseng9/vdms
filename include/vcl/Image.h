@@ -57,9 +57,11 @@ namespace VCL {
 
         enum class Format {
             NONE_IMAGE = 0,
-            JPG = 1,
-            PNG = 2,
-            TDB = 3
+            TDB = 1,
+            MAT = 2,
+            JPG = 3,
+            PNG = 4,
+            MP4 = 5
             };
 
     /*  *********************** */

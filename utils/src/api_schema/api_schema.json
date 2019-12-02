@@ -109,6 +109,11 @@
       "enum": ["png", "jpg"]
     },
 
+    "imgSeqFormatString": {
+      "type": "string",
+      "enum": ["png", "jpg", "mat", "mp4"]
+    },
+
     "metricFormatString": {
       "type": "string",
       "enum": ["L2", "IP"]
@@ -705,7 +710,7 @@
         "_ref":        { "$ref": "#/definitions/refInt" },
         "link":        { "$ref": "#/definitions/blockLink" },
         "operations":  { "$ref": "#/definitions/blockFrameOperations" },
-        "format":      { "$ref": "#/definitions/imgFormatString" },
+        "format":      { "$ref": "#/definitions/imgSeqFormatString" },
         "constraints": { "type": "object" },
         "results":     { "$ref": "#/definitions/blockResults" },
         "unique":      { "type": "boolean" }

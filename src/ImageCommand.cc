@@ -91,6 +91,12 @@ VCL::Image::Format ImageCommand::get_requested_format(const Json::Value& cmd)
     if (requested_format == "tdb") {
         return VCL::Image::Format::TDB;
     }
+    if (requested_format == "mat") {
+        return VCL::Image::Format::MAT;
+    }
+    if (requested_format == "mp4") {
+        return VCL::Image::Format::MP4;
+    }
 
     return VCL::Image::Format::NONE_IMAGE;
 }

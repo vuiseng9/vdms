@@ -589,7 +589,30 @@ std::vector<unsigned char> Image::get_encoded_image(Image::Format format,
     }
 
     std::vector<unsigned char> buffer;
-    cv::imencode(extension, _cv_img, buffer, params);
+    if (format == Image::Format::MAT)
+    {
+        cv::Mat flat = _cv_img.reshape(1, _cv_img.total()*_cv_img.channels());
+        buffer = _cv_img.isContinuous()? flat : flat.clone();
+
+        unsigned char *pChar;
+        pChar = (unsigned char *)&(_cv_img.rows);
+        for (int i=0; i<4; i++)
+            buffer.push_back(*(pChar+i));
+        pChar = (unsigned char *)&(_cv_img.cols);
+        for (int i=0; i<4; i++)
+            buffer.push_back(*(pChar+i));
+        int n_channel = _cv_img.channels();
+        pChar = (unsigned char *)&(n_channel);
+        for (int i=0; i<4; i++)
+            buffer.push_back(*(pChar+i));
+    }
+    else if ((format == Image::Format::JPG) ||
+             (format == Image::Format::PNG))
+    {
+        cv::imencode(extension, _cv_img, buffer, params);
+    }
+    else
+        throw VCLException(UnsupportedFormat, "Invalid Format");
 
     return buffer;
 }
@@ -862,6 +885,8 @@ std::string Image::format_to_string(Image::Format format)
             return "png";
         case Image::Format::TDB:
             return "tdb";
+        case Image::Format::MAT:
+            return "mat";
         default:
             throw VCLException(UnsupportedFormat, (int)format + " is not a \
                 valid format");

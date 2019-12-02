@@ -45,15 +45,14 @@ namespace VDMS {
     class VideoCommand: public RSCommand
     {
     protected:
-        void enqueue_operations(VCL::Video& video, const Json::Value& op);
-
         VCL::Video::Codec string_to_codec(const std::string& codec);
 
         virtual Json::Value check_responses(Json::Value& responses);
 
     public:
-
         VideoCommand(const std::string &cmd_name);
+
+        void enqueue_operations(VCL::Video& video, const Json::Value& op);
 
         virtual int construct_protobuf(PMGDQuery& tx,
                                const Json::Value& root,

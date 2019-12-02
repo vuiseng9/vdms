@@ -522,13 +522,14 @@ Json::Value FindFrames::construct_responses(
             bool is_interval = get_interval_index(cmd, interval_idx);
             bool is_frames   = cmd.isMember("frames");
 
+            // get indices of interested frames
             if (is_frames) {
                 for (auto& fr : cmd["frames"]) {
                     frames.push_back(fr.asUInt());
                 }
             }
-            else if (is_interval) {
-
+            else if (is_interval)
+            {
                 Json::Value interval_op = operations[interval_idx];
 
                 int start = get_value<int>(interval_op, "start");
@@ -538,9 +539,6 @@ Json::Value FindFrames::construct_responses(
                 for (int i = start; i < stop; i += step)  {
                     frames.push_back(i);
                 }
-
-                Json::Value deleted;
-                operations.removeIndex(interval_idx, &deleted);
             }
             else {
                 // This should never happen, as we check this condition in
@@ -560,45 +558,90 @@ Json::Value FindFrames::construct_responses(
             FindImage img_cmd;
 
             if (cmd.isMember("format")) {
-
                 format = img_cmd.get_requested_format(cmd);
-
-                if (format == VCL::Image::Format::NONE_IMAGE ||
-                    format == VCL::Image::Format::TDB) {
-                    Json::Value return_error;
-                    return_error["status"] = RSCommand::Error;
-                    return_error["info"]   = "Invalid Return Format for FindFrames";
-                    return error(return_error);
-                }
             }
 
-            for (auto idx : frames) {
-                cv::Mat mat = video.get_frame(idx);
-                VCL::Image img(mat, false);
-                if (!operations.empty()) {
-                    img_cmd.enqueue_operations(img, operations);
+            if (format == VCL::Image::Format::MP4)
+            {
+                std::string tmp_vid = VCL::create_unique("/tmp/", "FindFrames.mp4");
+
+                FindVideo vid_cmd;
+
+                if (!operations.empty())
+                {
+                    vid_cmd.enqueue_operations(video, operations);
                 }
 
-                std::vector<unsigned char> img_enc;
-                img_enc = img.get_encoded_image(format);
+                // Storing video routine
+                video.store(tmp_vid, VCL::Video::Codec::H264);
 
-                if (!img_enc.empty()) {
-                    std::string* img_str = query_res.add_blobs();
-                    img_str->resize(img_enc.size());
-                    std::memcpy((void*)img_str->data(),
-                                (void*)img_enc.data(),
-                                img_enc.size());
+                // Read saved tmp video into buffer and add to query blob
+                std::string* vid_str = query_res.add_blobs();
+
+                std::ifstream file;
+                file.exceptions(
+                    std::ifstream::badbit
+                  | std::ifstream::failbit
+                  | std::ifstream::eofbit);
+                file.open(tmp_vid);
+                file.seekg(0, std::ios::end);
+                std::streampos length(file.tellg());
+
+                if (length) {
+                    file.seekg(0, std::ios::beg);
+                    vid_str->resize(static_cast<std::size_t>(length));
+                    file.read((char*)(vid_str->data()), static_cast<std::size_t>(length));
                 }
-                else {
-                    Json::Value return_error;
-                    return_error["status"] = RSCommand::Error;
-                    return_error["info"]   = "Image Data not found";
-                    return error(return_error);
+            }
+            else if ((format == VCL::Image::Format::JPG) ||
+                     (format == VCL::Image::Format::PNG) ||
+                     (format == VCL::Image::Format::MAT))
+            {
+                // for FORMAT MAT/JPG/PNG
+                for (auto idx : frames) {
+                    cv::Mat mat = video.get_frame(idx);
+                    VCL::Image img(mat, false);
+
+                    // We need to delete interval operations as its
+                    // frame indices has been extracted to frames
+                    Json::Value deleted;
+                    operations.removeIndex(interval_idx, &deleted);
+
+                    if (!operations.empty())
+                    {
+                        img_cmd.enqueue_operations(img, operations);
+                    }
+
+                    std::vector<unsigned char> img_enc;
+                    img_enc = img.get_encoded_image(format);
+
+                    if (!img_enc.empty())
+                    {
+                        std::string* img_str = query_res.add_blobs();
+                        img_str->resize(img_enc.size());
+                        std::memcpy((void*)img_str->data(),
+                                    (void*)img_enc.data(),
+                                    img_enc.size());
+                    }
+                    else
+                    {
+                        Json::Value return_error;
+                        return_error["status"] = RSCommand::Error;
+                        return_error["info"]   = "Image Data not found";
+                        return error(return_error);
+                    }
                 }
+            }
+            else
+            {
+                Json::Value return_error;
+                return_error["status"] = RSCommand::Error;
+                return_error["info"]   = "Invalid Return Format for FindFrames";
+                return error(return_error);
             }
         }
-
-        catch (VCL::Exception e) {
+        catch (VCL::Exception e)
+        {
             print_exception(e);
             Json::Value return_error;
             return_error["status"]  = RSCommand::Error;
