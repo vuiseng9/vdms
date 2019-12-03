@@ -92,6 +92,9 @@ Video::Video(const Video &video)
 
     for (const auto& op : video._operations)
         _operations.push_back(op);
+
+    for (const auto& foi: video._foi)
+        _foi.push_back(foi);
 }
 
 Video& Video::operator=(Video vid)
@@ -121,7 +124,9 @@ Video::Codec Video::get_codec() const
 
 cv::Mat Video::get_frame(unsigned frame_number)
 {
-    perform_operations();
+    if( _frames.empty())
+        perform_operations();
+
     if (frame_number >= _size.frame_count)
         throw VCLException(OutOfBounds, "Frame requested is out of bounds");
 
@@ -202,6 +207,20 @@ void Video::set_dimensions(const cv::Size& dimensions)
     _size.width  = dimensions.width;
 }
 
+void Video::set_foi(const std::vector<unsigned int> &foi)
+{
+    _foi.clear();
+    if (!foi.empty())
+    {
+        _foi = foi;
+        std::sort(_foi.begin(),_foi.end());
+    }
+    else
+    {
+        throw VCLException(ObjectEmpty, "Empty FOI vector");
+    }
+}
+
 void Video::populate_video_params()
 {
     cv::VideoCapture inputVideo(_video_id);
@@ -239,6 +258,8 @@ void Video::populate_video_params()
         throw VCLException(UnsupportedFormat, codec + " is not supported");
 
     inputVideo.release();
+
+    init_foi();
 }
 
     /*  *********************** */
@@ -296,6 +317,7 @@ void Video::swap(Video& rhs) noexcept
     swap(_fps, rhs._fps);
     swap(_codec, rhs._codec);
     swap(_operations, rhs._operations);
+    swap(_foi, rhs._foi);
 }
 
     /*  *********************** */
@@ -328,8 +350,9 @@ void Video::threshold(int value)
 
 void Video::store(const std::string &video_id, Video::Codec video_codec)
 {
-    if ((video_codec == _codec) && (_operations.size() == 0)) {
-        //We copy/move no change in codec and no operation
+    if ((video_codec == _codec) && (_operations.size() == 0) &&
+            (_foi.size()==_size.frame_count)) {
+        //We copy/move no change in codec and no operation and FOI is all frames
         moveto(video_id);
     } else {
         // out_name cannot be assigned to _video_id here as the read operation
@@ -368,6 +391,13 @@ void Video::delete_video()
     if (exists(_video_id)) {
         std::remove(_video_id.c_str());
     }
+}
+
+void Video::init_foi()
+{
+    _foi.clear();
+    for (unsigned int i=0; i<_size.frame_count;i++)
+        _foi.push_back(i);
 }
 
     /*  *********************** */
@@ -470,9 +500,11 @@ void Video::Write::operator()(Video *video)
                 "Could not open the output video for write");
     }
 
-    for (auto& frame : video->_frames) {
-        outputVideo << frame.get_cvmat(false);
+    for (auto& foi : video->_foi)
+    {
+        outputVideo << video->get_frame(foi);
     }
+
     outputVideo.release();
 
     video->_video_id = _outname;
@@ -542,15 +574,21 @@ void Video::Interval::operator()(Video *video)
                 "End Frame cannot be greater than number of frames");
 
     std::vector<VCL::Image> interval_vector;
+    std::vector<unsigned int> foi;
+    unsigned int new_frame_id=0;
 
-    for (int i = _start; i < _stop; i += _step) {
+    for (unsigned int i = _start; i < _stop; i += _step) {
         interval_vector.push_back(frames[i]);
+        foi.push_back(new_frame_id);
+        new_frame_id++;
     }
 
     frames.insert(frames.begin(), interval_vector.begin(),
                                   interval_vector.end());
     frames.erase(frames.begin() + interval_vector.size(), frames.end());
 
-    video->_fps /= _step;
+    //TODO: duration preservation doesnt work
+//    video->_fps /= _step;
     video->_size.frame_count = interval_vector.size();
+    video->set_foi(foi);
 }

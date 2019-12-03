@@ -511,7 +511,7 @@ Json::Value FindFrames::construct_responses(
         }
 
         try {
-            std::vector<unsigned> frames;
+            std::vector<unsigned int> frames;
 
             // Copy of operations is needed, as we pass the operations to
             // the enqueue_operations() method of ImageCommands class, and
@@ -551,6 +551,7 @@ Json::Value FindFrames::construct_responses(
             }
 
             VCL::Video video(video_path);
+            video.set_foi(frames);
 
             // By default, return frames as PNGs
             VCL::Image::Format format = VCL::Image::Format::PNG;

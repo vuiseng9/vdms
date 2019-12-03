@@ -215,6 +215,11 @@ namespace VCL {
         void set_dimensions(const cv::Size& dimensions);
 
         /**
+         *  Set indices of frames of interest
+         */
+        void set_foi(const std::vector<unsigned int> &foi);
+
+        /**
          *  Populate size, fps, and codec of the Video Container
          */
         void populate_video_params();
@@ -321,7 +326,9 @@ namespace VCL {
 
         bool _flag_stored; // Flag to avoid unnecessary read/write
 
-        std::vector<VCL::Image> _frames;
+        std::vector<VCL::Image> _frames; // buffer to store decoded frames
+
+        std::vector<unsigned int> _foi; // indices of frames of interest (FOI)
 
         VideoSize _size;
 
@@ -333,6 +340,11 @@ namespace VCL {
         KeyFrameList _key_frame_list;
 
         std::list<std::shared_ptr<Operation>> _operations;
+
+        /**
+         *  initialize foi which will be all frames of a video
+         */
+        void init_foi();
 
     /*  *********************** */
     /*        OPERATION         */
