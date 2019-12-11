@@ -122,14 +122,18 @@ Video::Codec Video::get_codec() const
     return _codec;
 }
 
-cv::Mat Video::get_frame(unsigned frame_number)
+cv::Mat Video::get_frame(int frame_number)
 {
     if( _frames.empty())
         perform_operations();
 
-    if (frame_number >= _size.frame_count)
-        throw VCLException(OutOfBounds, "Frame requested is out of bounds");
-
+    if (_frames.find(frame_number) == _frames.end())
+    {
+//          throw VCLException(OutOfBounds, "Frame requested is out of bounds");
+        cout << "Warning: Frame not found, return black frame for id " << frame_number << endl;
+        Mat black_img(_size.width, _size.height, CV_8UC3, Scalar(0,0,0));
+        return black_img;
+    }
     return _frames.at(frame_number).get_cvmat();
 }
 
@@ -441,21 +445,50 @@ void Video::Read::operator()(Video *video)
 
     video->_frames.clear();
 
-    // Read all the frames
-    // TODO, If interval operation is specified, it make sense to
-    // apply this here as well, as will prevent copying some frames.
+    FFmpegDecoder dec(video->_video_id);
+    AVFrame* pFrame = NULL;
+    cv::Mat mat_frame;
+    int frameId;
 
-    while(true) {
+    float timebase = (float)dec.vstrm->time_base.num/
+                     (float)dec.vstrm->time_base.den;
 
-        cv::Mat mat_frame;
-        inputVideo >> mat_frame; // Read frame
+    float period = (float)dec.vstrm->avg_frame_rate.den/
+                   (float)dec.vstrm->avg_frame_rate.num;
 
-        if (mat_frame.empty())
+    // This a scaler to convert timestamp counter to frame Id
+    float scaler = timebase/period;
+
+    FFmpegDecoder tmpDec(video->_video_id); // to be deleted
+    KeyFrameList kfList=tmpDec.get_keyframe_list();
+    tmpDec.close(); // to be deleted
+
+    KeyFrame kf_start=kfList[0];
+
+    // finding the kf to begin decode
+    // Assuming kfList in ascending order of keyframe
+    for (auto& kf: kfList)
+    {
+        if (kf.derivedId > video->_foi.front())
             break;
-
-        video->_frames.push_back(VCL::Image(mat_frame, false));
+        kf_start = kf;
     }
 
+    dec.seek(kf_start.pkt_ts);
+
+    while (pFrame = dec.get_one_frame())
+    {
+        frameId = (int)( ((float)pFrame->best_effort_timestamp * scaler) + 0.5 );
+        dec.avframeToMat(pFrame, mat_frame);
+        video->_frames.insert(make_pair(frameId, VCL::Image(mat_frame, true)));
+        av_frame_free(&pFrame);
+        pFrame = NULL;
+
+        if (frameId == video->_foi.back())
+            break;
+    }
+
+    dec.close();
     inputVideo.release();
 }
 
@@ -516,7 +549,7 @@ void Video::Resize::operator()(Video *video)
 {
     for (auto& frame : video->_frames) {
         // VCL::Image expect the params (h,w) (contrary to openCV convention)
-        frame.resize(_size.height, _size.width);
+        frame.second.resize(_size.height, _size.width);
     }
 
     video->_size.width  = _size.width;
@@ -530,7 +563,7 @@ void Video::Resize::operator()(Video *video)
 void Video::Crop::operator()(Video *video)
 {
     for (auto& frame : video->_frames) {
-        frame.crop(_rect);
+        frame.second.crop(_rect);
     }
 
     video->_size.width  = _rect.width;
@@ -544,7 +577,7 @@ void Video::Crop::operator()(Video *video)
 void Video::Threshold::operator()(Video *video)
 {
     for (auto& frame : video->_frames) {
-        frame.threshold(_threshold);
+        frame.second.threshold(_threshold);
     }
 }
 
@@ -558,33 +591,29 @@ void Video::Interval::operator()(Video *video)
         throw VCLException(UnsupportedOperation,
                 "Only Unit::FRAMES supported for interval operation");
 
-    std::vector<VCL::Image>& frames = video->_frames;
+    std::map<int, VCL::Image>& frames = video->_frames;
     unsigned nframes = frames.size();
 
     if (_start >= nframes)
         throw VCLException(SizeMismatch,
                 "Start Frame cannot be greater than number of frames");
 
-    if (_stop >= nframes)
+    if ((_stop-_step) >= nframes)
         throw VCLException(SizeMismatch,
                 "End Frame cannot be greater than number of frames");
 
-    std::vector<VCL::Image> interval_vector;
     std::vector<unsigned int> foi;
-    unsigned int new_frame_id=0;
-
     for (unsigned int i = _start; i < _stop; i += _step) {
-        interval_vector.push_back(frames[i]);
-        foi.push_back(new_frame_id);
-        new_frame_id++;
+        foi.push_back(i);
     }
+    video->set_foi(foi);
 
-    frames.insert(frames.begin(), interval_vector.begin(),
-                                  interval_vector.end());
-    frames.erase(frames.begin() + interval_vector.size(), frames.end());
+    video->_size.frame_count = foi.size();
+
+    // Do we want to remove the unwanted frame from cache?
 
     //TODO: duration preservation doesnt work
 //    video->_fps /= _step;
-    video->_size.frame_count = interval_vector.size();
-    video->set_foi(foi);
+//    video->_size.frame_count = interval_vector.size();
+//
 }

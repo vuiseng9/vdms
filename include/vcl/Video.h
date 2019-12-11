@@ -166,7 +166,7 @@ namespace VCL {
          *
          *  @return cv::Mat with the specified frame
          */
-        cv::Mat get_frame(unsigned frame_num);
+        cv::Mat get_frame(int frame_num);
 
         /**
          *  Gets encoded Video data in a buffer
@@ -326,7 +326,7 @@ namespace VCL {
 
         bool _flag_stored; // Flag to avoid unnecessary read/write
 
-        std::vector<VCL::Image> _frames; // buffer to store decoded frames
+        std::map<int, VCL::Image> _frames;
 
         std::vector<unsigned int> _foi; // indices of frames of interest (FOI)
 

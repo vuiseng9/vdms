@@ -583,7 +583,8 @@ Json::Value FindFrames::construct_responses(
                     vid_cmd.enqueue_operations(video, operations);
                 }
 
-                // Storing video routine
+                // We use store function to forward all the operations and
+                // write out encoded stream to server disk
                 video.store(tmp_vid, VCL::Video::Codec::H264);
 
                 // Read saved tmp video into buffer and add to query blob
