@@ -178,12 +178,8 @@ std::vector<unsigned char> Video::get_encoded()
 
 const KeyFrameList& Video::get_key_frame_list()
 {
-    #if VIDEO_KEYFRAMES
-    if (_key_frame_list.empty()) {
-        VCL::KeyFrameParser parser(_video_id);
-        _key_frame_list = parser.parse();
-    }
-    #endif
+    FFmpegDecoder dec(_video_id);
+    _key_frame_list = dec.get_keyframe_list();
     return _key_frame_list;
 }
 

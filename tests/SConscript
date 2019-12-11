@@ -70,10 +70,8 @@ objects_list = [ '../src/QueryHandler.o',
                   '../src/vcl/TDBDescriptorSet.o',
                   '../src/vcl/TDBDenseDescriptorSet.o',
                   '../src/vcl/TDBSparseDescriptorSet.o',
+                  '../src/vcl/FFmpegDecoder.o',
                   test_sources
                 ]
-
-if GetOption('cflags') and '-DVIDEO_KEYFRAMES' in GetOption('cflags') :
-  objects_list.append('../src/vcl/KeyFrameParser.o')
 
 query_tests = testenv.Program( 'unit_test.run', objects_list)

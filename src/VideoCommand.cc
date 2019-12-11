@@ -173,6 +173,14 @@ int AddVideo::construct_protobuf(
     Json::Value props = get_value<Json::Value>(cmd, "properties");
     props[VDMS_VID_PATH_PROP] = file_name;
 
+    // add a label property to video entity
+    string vid_label;
+    if (!props.isMember("name"))
+        vid_label = file_name;
+    else
+        vid_label = props["name"].asString();
+    props[VDMS_VID_LABEL_PROP]=vid_label;
+
     // Add Video node
     query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
 
@@ -181,18 +189,20 @@ int AddVideo::construct_protobuf(
     // final stored (could be transcoded) video is extracted.
     if ((VCL::Video::AVC1 == vcl_codec) || (VCL::Video::H264 == vcl_codec))
     {
-        VCL::KeyFrameList frame_list;
+        VCL::KeyFrameList keyframe_list;
         VCL::Video stored_video = VCL::Video(file_name);
-        frame_list = stored_video.get_key_frame_list();
+        keyframe_list = stored_video.get_key_frame_list();
 
         // Add key-frames (if extracted) as nodes connected to the video
-        for (const auto &frame : frame_list) {
-            Json::Value frame_props;
-            frame_props[VDMS_KF_IDX_PROP]  = static_cast<Json::UInt64>(frame.idx);
-            frame_props[VDMS_KF_BASE_PROP] = static_cast<Json::Int64> (frame.base);
+        for (const auto &keyframe : keyframe_list) {
+            Json::Value keyframe_props;
+            keyframe_props[VDMS_KF_IDX_PROP]     = static_cast<Json::Int>(keyframe.derivedId);
+            keyframe_props[VDMS_KF_PKT_POS_PROP] = static_cast<Json::Int64>(keyframe.pkt_pos);
+            keyframe_props[VDMS_KF_PKT_TS_PROP]  = static_cast<Json::Int64>(keyframe.pkt_ts);
+            keyframe_props[VDMS_VID_LABEL_PROP]  = vid_label;
 
             int frame_ref = query.get_available_reference();
-            query.AddNode(frame_ref, VDMS_KF_TAG, frame_props,
+            query.AddNode(frame_ref, VDMS_KF_TAG, keyframe_props,
                           Json::Value());
             query.AddEdge(-1, node_ref, frame_ref, VDMS_KF_EDGE,
                           Json::Value());

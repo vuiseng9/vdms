@@ -55,6 +55,7 @@ namespace VCL {
 
       OpenCVError,
 
+      FFmpegNotInit,
       FFmpegInitFailed,
       FFmpegParseFailed,
 

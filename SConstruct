@@ -16,10 +16,6 @@ AddOption('--prefix', dest='prefix',
                       metavar='DIR',
                       help='installation prefix')
 
-AddOption('--video-keyframes', action='append_const', dest='cflags',
-                      const='-DVIDEO_KEYFRAMES',
-                      help= 'Build KeyFrame Extraction feature for videos (Ubuntu 18 only)')
-
 def buildServer(env):
 
   env.Append(
@@ -42,6 +38,7 @@ def buildServer(env):
              'avcodec',
              'avformat',
              'avutil',
+             'swscale',
            ],
 
     LIBPATH = ['utils/',
@@ -80,13 +77,10 @@ def buildServer(env):
                   'src/vcl/TDBDescriptorSet.cc',
                   'src/vcl/TDBDenseDescriptorSet.cc',
                   'src/vcl/TDBSparseDescriptorSet.cc',
+                  'src/vcl/FFmpegDecoder.cc',
                 ]
 
-  if GetOption('cflags') and '-DVIDEO_KEYFRAMES' in GetOption('cflags') :
-    vdms_server_files.append('src/vcl/KeyFrameParser.cc')
-
   env.Program('vdms.run', vdms_server_files)
-
 
 # Set INTEL_PATH. First check arguments, then enviroment, then default
 if ARGUMENTS.get('INTEL_PATH', '') != '':
