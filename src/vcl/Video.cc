@@ -182,8 +182,11 @@ std::vector<unsigned char> Video::get_encoded()
 
 const KeyFrameList& Video::get_key_frame_list()
 {
-    FFmpegDecoder dec(_video_id);
-    _key_frame_list = dec.get_keyframe_list();
+    if (_key_frame_list.empty())
+    {
+        FFmpegDecoder dec(_video_id);
+        _key_frame_list = dec.get_keyframe_list();
+    }
     return _key_frame_list;
 }
 
@@ -220,6 +223,12 @@ void Video::set_foi(const std::vector<unsigned int> &foi)
         throw VCLException(ObjectEmpty, "Empty FOI vector");
     }
 }
+
+void Video::set_key_frame_list(const KeyFrameList& key_frame_list)
+{
+    _key_frame_list = key_frame_list;
+}
+
 
 void Video::populate_video_params()
 {
@@ -459,22 +468,29 @@ void Video::Read::operator()(Video *video)
     // This a scaler to convert timestamp counter to frame Id
     float scaler = timebase/period;
 
-    FFmpegDecoder tmpDec(video->_video_id); // to be deleted
-    KeyFrameList kfList=tmpDec.get_keyframe_list();
-    tmpDec.close(); // to be deleted
+    KeyFrameList kfList=video->get_key_frame_list();
 
-    KeyFrame kf_start=kfList[0];
-
-    // finding the kf to begin decode
-    // Assuming kfList in ascending order of keyframe
-    for (auto& kf: kfList)
+    if (kfList.empty())
     {
-        if (kf.derivedId > video->_foi.front())
-            break;
-        kf_start = kf;
+        cout << "Warning!!! This video has not keyframe extracted" << endl << flush;
+        // invoke decode from beginning if not found
+        dec.seek(0);
     }
+    else
+    {
+        KeyFrame kf_start=kfList[0];
 
-    dec.seek(kf_start.pkt_ts);
+        // finding the kf to begin decode
+        // Assuming kfList in ascending order of keyframe
+        for (auto& kf: kfList)
+        {
+            if (kf.derivedId > video->_foi.front())
+                break;
+            kf_start = kf;
+        }
+
+        dec.seek(kf_start.pkt_ts);
+    }
 
     while (pFrame = dec.get_one_frame())
     {

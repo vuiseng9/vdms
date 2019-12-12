@@ -220,6 +220,11 @@ namespace VCL {
         void set_foi(const std::vector<unsigned int> &foi);
 
         /**
+         *  Set KeyFrameList
+         */
+        void set_key_frame_list(const KeyFrameList& key_frame_list);
+
+        /**
          *  Populate size, fps, and codec of the Video Container
          */
         void populate_video_params();

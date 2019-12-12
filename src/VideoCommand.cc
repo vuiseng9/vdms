@@ -36,8 +36,17 @@
 #include "VideoCommand.h"
 #include "VDMSConfig.h"
 #include "defines.h"
+#include <random>
 
 using namespace VDMS;
+
+void print_json(std::string label, Json::Value& json)
+{
+    Json::StreamWriterBuilder builder;
+    builder["indentation"]="  ";
+    cout << "[JSON Printer] " << label << endl
+         << Json::writeString(builder, json) << endl << std::flush;
+}
 
 VideoCommand::VideoCommand(const std::string &cmd_name):
     RSCommand(cmd_name)
@@ -99,6 +108,27 @@ VCL::Video::Codec VideoCommand::string_to_codec(const std::string& codec)
 Json::Value VideoCommand::check_responses(Json::Value& responses)
 {
     if (responses.size() != 1) {
+        Json::Value return_error;
+        return_error["status"]  = RSCommand::Error;
+        return_error["info"] = "PMGD Response Bad Size";
+        return return_error;
+    }
+
+    Json::Value& response = responses[0];
+
+    if (response["status"] != 0) {
+        response["status"]  = RSCommand::Error;
+        // Uses PMGD info error.
+        return response;
+    }
+
+    return response;
+}
+
+// TODO: temporary overload to check responses according the user threshold
+Json::Value VideoCommand::check_responses(Json::Value& responses, uint n_response)
+{
+    if (responses.size() != n_response) {
         Json::Value return_error;
         return_error["status"]  = RSCommand::Error;
         return_error["info"] = "PMGD Response Bad Size";
@@ -483,6 +513,43 @@ int FindFrames::construct_protobuf(
             get_value<bool>(cmd, "unique", false)
             );
 
+    // Auxiliary query to extract keyframe graph
+    // random generation of ref, but it is still a chance of ref clash
+    // TODO
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, 32767);
+    int aux_ref = dis(gen);
+    results["list"].append(VDMS_VID_LABEL_PROP);
+
+    query.QueryNode(
+            aux_ref,
+            VDMS_VID_TAG,
+            cmd["link"],
+            cmd["constraints"],
+            results,
+            get_value<bool>(cmd, "unique", false)
+            );
+
+    Json::Value kf_props;
+    kf_props["list"].append(VDMS_VID_LABEL_PROP);
+    kf_props["list"].append(VDMS_KF_IDX_PROP);
+    kf_props["list"].append(VDMS_KF_PKT_POS_PROP);
+    kf_props["list"].append(VDMS_KF_PKT_TS_PROP);
+
+    Json::Value link;
+    link["ref"] = aux_ref;
+
+    Json::Value null;
+
+    query.QueryNode(
+            -1,
+            VDMS_KF_TAG,
+            link,
+            null["null"],
+            kf_props,
+            false
+            );
     return 0;
 }
 
@@ -502,12 +569,42 @@ Json::Value FindFrames::construct_responses(
         return ret;
     };
 
-    Json::Value resp = check_responses(responses);
+    // 2 auxiliary query to extract keyframe
+    Json::Value resp = check_responses(responses, 3);
     if (resp["status"] != RSCommand::Success) {
         return error(resp);
     }
 
     Json::Value& FindFrames = responses[0];
+
+    // Aux. PMGD Resp
+    Json::Value vid_resp = responses[1];
+    Json::Value kf_resp  = responses[2];
+
+    map<string, VCL::KeyFrameList> kf_map;
+    map<string, string> vidpath_label_map;
+
+    for (auto& vid_json: vid_resp["entities"])
+    {
+        vidpath_label_map.insert(
+                    make_pair(vid_json[VDMS_VID_PATH_PROP].asString(),
+                              vid_json[VDMS_VID_LABEL_PROP].asString())
+                    );
+    }
+
+    for (auto& kf_json: kf_resp["entities"])
+    {
+        VCL::KeyFrame kf;
+        kf.derivedId     = kf_json[VDMS_KF_IDX_PROP].asInt();
+        kf.pkt_ts        = kf_json[VDMS_KF_PKT_TS_PROP].asInt64();
+        kf.pkt_pos       = kf_json[VDMS_KF_PKT_POS_PROP].asInt64();
+        string vid_label = kf_json[VDMS_VID_LABEL_PROP].asString();
+
+        kf_map[vid_label].push_back(kf);
+    }
+    // Assuming keyframe list is in descending order, reverse
+    for (auto& item: kf_map)
+        reverse(item.second.begin(), item.second.end());
 
     bool flag_empty = true;
 
@@ -562,6 +659,8 @@ Json::Value FindFrames::construct_responses(
 
             VCL::Video video(video_path);
             video.set_foi(frames);
+            video.set_key_frame_list(
+                        kf_map[vidpath_label_map[video_path]]);
 
             // By default, return frames as PNGs
             VCL::Image::Format format = VCL::Image::Format::PNG;

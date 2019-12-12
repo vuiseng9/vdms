@@ -49,6 +49,8 @@ namespace VDMS {
 
         virtual Json::Value check_responses(Json::Value& responses);
 
+        virtual Json::Value check_responses(Json::Value& responses, uint n_response);
+
     public:
         VideoCommand(const std::string &cmd_name);
 
