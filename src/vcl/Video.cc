@@ -610,19 +610,19 @@ void Video::Interval::operator()(Video *video)
     std::map<int, VCL::Image>& frames = video->_frames;
     unsigned nframes = frames.size();
 
-    if (_start >= nframes)
-        throw VCLException(SizeMismatch,
-                "Start Frame cannot be greater than number of frames");
-
-    if ((_stop-_step) >= nframes)
-        throw VCLException(SizeMismatch,
-                "End Frame cannot be greater than number of frames");
-
     std::vector<unsigned int> foi;
     for (unsigned int i = _start; i < _stop; i += _step) {
         foi.push_back(i);
     }
     video->set_foi(foi);
+
+    if (video->_frames.find(video->_foi.front()) == video->_frames.end())
+        throw VCLException(OutOfBounds,
+                "Start Frame are not part of decoded frames, potential out of bound");
+
+    if (video->_frames.find(video->_foi.back()) == video->_frames.end())
+        throw VCLException(OutOfBounds,
+                "End Frame Start Frame are not part of decoded frames, , potential out of bound");
 
     video->_size.frame_count = foi.size();
 
