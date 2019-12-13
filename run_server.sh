@@ -1,5 +1,6 @@
-rm log.log
+#!/usr/bin/env bash
 
-./vdms 2> log.log
+cd /vdms
+vdms.run 2> log.log
 
 # If problems with initialization, try deleting db folder.
