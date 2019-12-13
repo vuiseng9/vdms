@@ -109,7 +109,7 @@ SConscript(os.path.join('client/cpp','SConscript'), exports=['env'])
 
 if GetOption('no-server'):
     env.Alias('install-bin', env.Install(os.path.join(prefix, "bin"),
-      source="vdms"))
+      source="vdms.run"))
     install_list.append('install-bin')
 
     buildServer(env)
