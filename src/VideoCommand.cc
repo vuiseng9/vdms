@@ -40,7 +40,7 @@
 
 using namespace VDMS;
 
-void print_json(std::string label, Json::Value& json)
+void print_json(std::string label, const Json::Value& json)
 {
     Json::StreamWriterBuilder builder;
     builder["indentation"]="  ";
@@ -337,7 +337,6 @@ int FindVideo::construct_protobuf(
     if (get_value<bool>(results, "blob", true)){
         results["list"].append(VDMS_VID_PATH_PROP);
     }
-
     query.QueryNode(
             get_value<int>(cmd, "_ref", -1),
             VDMS_VID_TAG,
@@ -373,8 +372,7 @@ Json::Value FindVideo::construct_responses(
 
     Json::Value& FindVideo = responses[0];
 
-    bool flag_empty = true;
-
+//    bool flag_empty = true;
     for (auto& ent : FindVideo["entities"]) {
 
         if(!ent.isMember(VDMS_VID_PATH_PROP)){
@@ -384,9 +382,9 @@ Json::Value FindVideo::construct_responses(
         std::string video_path = ent[VDMS_VID_PATH_PROP].asString();
         ent.removeMember(VDMS_VID_PATH_PROP);
 
-        if (ent.getMemberNames().size() > 0) {
-            flag_empty = false;
-        }
+//        if (ent.getMemberNames().size() > 0) {
+//            flag_empty = false;
+//        }
         try {
             if (!cmd.isMember("operations") &&
                 !cmd.isMember("container")  &&
@@ -448,9 +446,9 @@ Json::Value FindVideo::construct_responses(
         }
     }
 
-    if (flag_empty) {
-        FindVideo.removeMember("entities");
-    }
+//    if (flag_empty) {
+//        FindVideo.removeMember("entities");
+//    }
 
     ret[_cmd_name].swap(FindVideo);
     return ret;
