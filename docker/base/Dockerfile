@@ -66,7 +66,7 @@ RUN git clone https://github.com/tristanpenman/valijson.git && \
     rm -r /valijson
 
 # VDMS/PMGD install
-RUN git clone https://github.com/intellabs/vdms/ vdms_install && \
+RUN git clone https://github.com/vuiseng9/vdms/ vdms_install && \
     cd vdms_install && git checkout intellab-vdms-develop && \
     git clone https://github.com/intellabs/pmgd/ && \
     cd pmgd && git checkout develop && \
