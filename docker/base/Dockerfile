@@ -67,9 +67,9 @@ RUN git clone https://github.com/tristanpenman/valijson.git && \
 
 # VDMS/PMGD install
 RUN git clone https://github.com/intellabs/vdms/ vdms_install && \
-    cd vdms_install && git checkout develop && \
+    cd vdms_install && git checkout intellab-vdms-develop && \
     git clone https://github.com/intellabs/pmgd/ && \
-    cd pmgd && git checkout intellab-vdms-develop && \
+    cd pmgd && git checkout develop && \
     make PMOPT=MSYNC && \
     mv lib/*.so /usr/local/lib/ && ls /usr/local/lib/libpmgd* && \
     cd .. && scons -j16 install && \
