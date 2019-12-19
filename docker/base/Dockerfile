@@ -28,7 +28,7 @@ RUN cd /usr/src/gtest && cmake . && make && mv libgtest* /usr/lib/
 RUN git clone https://github.com/google/protobuf.git && \
     cd protobuf && git checkout v3.9.0 && ./autogen.sh &&  \
     ./configure --prefix=/usr/local && \
-    make -j $(cat /proc/cpuinfo | wc -l) && \
+    make -j8 && \
     make install && ldconfig && \
     rm -rf /protobuf
 
@@ -39,7 +39,7 @@ RUN mkdir /opencv && cd /opencv && \
     mkdir build && cd build && \
     cmake -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_INSTALL_PREFIX=/usr/local .. && \
-    make -j $(cat /proc/cpuinfo | wc -l) && make install && \
+    make -j8 && make install && \
     rm -rf /opencv
 
 # TileDB
@@ -69,7 +69,7 @@ RUN git clone https://github.com/tristanpenman/valijson.git && \
 RUN git clone https://github.com/intellabs/vdms/ vdms_install && \
     cd vdms_install && git checkout develop && \
     git clone https://github.com/intellabs/pmgd/ && \
-    cd pmgd && git checkout develop && \
+    cd pmgd && git checkout intellab-vdms-develop && \
     make PMOPT=MSYNC && \
     mv lib/*.so /usr/local/lib/ && ls /usr/local/lib/libpmgd* && \
     cd .. && scons -j16 install && \

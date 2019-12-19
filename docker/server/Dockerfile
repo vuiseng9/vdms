@@ -1,5 +1,5 @@
 # Pull base image.
-FROM intellabs/vdms:base
+FROM intellabs-vdms:base
 
 # Setup entry point
 RUN echo '#!/bin/bash' > /start.sh && \

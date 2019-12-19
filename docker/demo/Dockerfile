@@ -1,5 +1,5 @@
 # Pull base image.
-FROM intellabs/vdms:base
+FROM intellabs-vdms:base
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
