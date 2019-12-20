@@ -20,13 +20,12 @@ RUN jupyter notebook --generate-config && \
     echo "c.NotebookApp.password='sha1:d12a2dd64552:86359144939d58019e6e5b37e373a50426ad7b2b' ">> /root/.jupyter/jupyter_notebook_config.py
 
 # Decompress Demo Database and Sample Files
-RUN cd /vdms && wget -q remis.io/share/demo.tgz
+#RUN cd /vdms && wget -q remis.io/share/demo.tgz
 COPY examples /vdms/examples
 
 # Setup entry point
 RUN echo '#!/bin/bash' > /start.sh && \
     echo 'cd /vdms' >> /start.sh && \
-    echo 'tar xzf demo.tgz' >> /start.sh && \
     echo 'vdms &' >> /start.sh && \
     echo 'cd examples' >> /start.sh && \
     echo 'jupyter notebook --port=8888 --no-browser --allow-root --ip=0.0.0.0' >> /start.sh && \
